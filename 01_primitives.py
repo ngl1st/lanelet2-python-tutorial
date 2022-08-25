@@ -73,6 +73,12 @@ def lanelet_map():
     map = LaneletMap()
     lanelet = get_a_lanelet()
     map.add(lanelet)
+    print(map.laneletLayer)
+    print(map.pointLayer)
+    print(map.areaLayer)
+    assert lanelet in map.laneletLayer
+    assert map.pointLayer
+    assert not map.areaLayer
     path = os.path.join(tempfile.mkdtemp(), 'mapfile.osm')
     projector = UtmProjector(lanelet2.io.Origin(49, 8.4))
     lanelet2.io.write(path, map, projector)
@@ -120,4 +126,4 @@ def hasPathFromTo(graph, start, target):
         return True
 
 if __name__ == '__main__':
-    routing()
+    lanelet_map()
