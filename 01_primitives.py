@@ -5,6 +5,7 @@ from lanelet2.core import AttributeMap, TrafficLight, Lanelet, LineString3d, Poi
     LaneletMap, BoundingBox2d, BasicPoint2d, CompoundLineString3d
 from lanelet2.projection import UtmProjector
 
+example_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mapping_example.osm")
 
 def get_linestring_at_x(x):
     return LineString3d(getId(), [Point3d(getId(), x, i, 0) for i in range(0, 3)])
@@ -78,5 +79,45 @@ def lanelet_map():
     mapLoad, errors = lanelet2.io.loadRobust(path, projector)
     assert mapLoad.laneletLayer.exists(lanelet.id)
 
+def traffic_rules():
+    traffic_rules = lanelet2.traffic_rules.create(lanelet2.traffic_rules.Locations.Germany,
+                                                  lanelet2.traffic_rules.Participants.Vehicle)
+    lanelet = get_a_lanelet()
+    lanelet.attributes["vehicle"] = "yes"
+    assert traffic_rules.canPass(lanelet)
+    assert traffic_rules.speedLimit(lanelet).speedLimit > 1
+    print(traffic_rules.speedLimit(lanelet).speedLimit)
+
+def routing():
+    projector = UtmProjector(lanelet2.io.Origin(49, 8.4))
+    map = lanelet2.io.load(example_file, projector)
+    traffic_rules = lanelet2.traffic_rules.create(lanelet2.traffic_rules.Locations.Germany,
+                                                  lanelet2.traffic_rules.Participants.Vehicle)
+    graph = lanelet2.routing.RoutingGraph(map, traffic_rules)
+    lanelet = map.laneletLayer[4984315]
+    toLanelet = map.laneletLayer[2925017]
+    print(graph.following(lanelet))
+    print(graph.reachableSet(lanelet, 100, 0))
+    print(graph.possiblePaths(lanelet, 100, 0, False))
+
+def hasPathFromTo(graph, start, target):
+    class TargetFound(BaseException):
+        pass
+
+    def raiseIfDestination(visitInformation):
+        # this function is called for every successor of lanelet with a LaneletVisitInformation object.
+        # if the function returns true, the search continues with the successors of this lanelet.
+        # Otherwise, the followers will not be visited through this lanelet, but could still be visited through
+        # other lanelets.
+        if visitInformation.lanelet == target:
+            raise TargetFound()
+        else:
+            return True
+    try:
+        graph.forEachSuccessor(start, raiseIfDestination)
+        return False
+    except TargetFound:
+        return True
+
 if __name__ == '__main__':
-    lanelet_map()
+    routing()
